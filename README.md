@@ -5,7 +5,7 @@ cwctl is a console management plugin for Class Widgets 2. It provides a command�
 > [!CAUTION]
 > The plugin has not developed yet.
 
-The plugin is written in Rust and uses reedline for a modern CLI experience. It communicates with aria2‑next via JSON‑RPC to enable multi‑threaded concurrent downloads of other plugins. Both cwctl and the bundled aria2‑next are compiled and packaged into a .cwplugin file during the GitHub Release action. Class Widgets 2 is responsible for installing and invoking cwctl, while all download heavy lifting is delegated to aria2‑next.
+The plugin is written in Rust and uses reedline for a modern CLI experience. It communicates with aria2‑next via JSON‑RPC to enable multi‑threaded concurrent downloads of other plugins. Both cwctl and the bundled aria2‑next are compiled and packaged into a `.cwplugin` file during the GitHub Release action. Class Widgets 2 is responsible for installing and invoking cwctl, while all download heavy lifting is delegated to aria2‑next.
 
 ### Features
 
@@ -107,7 +107,7 @@ todo.
 The repository includes .github/workflows/release.yml. When a tag is pushed, the action will:
 
 - Compile the Rust code for multiple platforms
-- Produce the corresponding .cwplugin package
+- Produce the corresponding `.cwplugin` package
 - Attach it to the GitHub Release
 
 ### Project Structure
@@ -121,7 +121,7 @@ cwctl/
 ```
 
 > [!Note]
-> The plugin.json file must be present for CW2 to recognise the plugin. Its content follows the standard CW2 plugin specification.
+> The `plugin.json` file must be present for CW2 to recognise the plugin. Its content follows the standard CW2 plugin specification.
 
 ### License
 
@@ -129,17 +129,17 @@ This project is licensed under the Apache License, Version 2.0. See the LICENSE 
 
 ### Related Links
 
-· Class Widgets 2 – Main application
-· Class Widgets SDK – Plugin development SDK
-· Plugin Template v2 – Official template
-· Plugin Development Guide – Full documentation
-· reedline – CLI library
-· aria2‑next – Download engine (bundled separately)
+- Class Widgets 2 – Main application
+- Class Widgets SDK – Plugin development SDK
+- Plugin Template v2 – Official template
+- Plugin Development Guide – Full documentation
+- reedline – CLI library
+- aria2‑next – Download engine (bundled separately)
 
 ### Contributing
 
 Issues and pull requests are welcome. Please ensure that:
 
-· Code passes cargo fmt and cargo clippy
-· Commit messages follow Conventional Commits
-· New features include appropriate tests
+- Code passes `cargo fmt` and `cargo clippy`
+- Commit messages follow Conventional Commits
+- New features include appropriate tests
