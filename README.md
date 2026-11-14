@@ -117,6 +117,11 @@ testing.
 while `plugin update` marks the installed version as `latest`. These commands
 do not download plugin files yet.
 
+When `plugin install` receives `--url`, it submits the URL to aria2 through
+JSON-RPC. The endpoint defaults to
+`http://127.0.0.1:6800/jsonrpc`; override it with `CWCTL_ARIA2_RPC` and set
+`CWCTL_ARIA2_SECRET` when aria2 requires a secret token.
+
 #### GitHub Release Action
 
 The repository includes .github/workflows/release.yml. When a tag is pushed, the action will:

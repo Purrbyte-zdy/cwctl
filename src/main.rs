@@ -1,7 +1,9 @@
 use std::env;
 
+mod aria2;
 mod store;
 
+use aria2::Aria2Client;
 use store::{Plugin, PluginStore};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -150,10 +152,16 @@ fn execute(command: Command) -> Result<String, String> {
             let version = version.unwrap_or_else(|| "latest".to_owned());
             validate_plugin_metadata(&name, &version, url.as_deref())?;
             let store = PluginStore::from_environment()?;
+            let download_id = if let Some(source) = &url {
+                Some(Aria2Client::from_environment()?.add_uri(source)?)
+            } else {
+                None
+            };
             store.install(Plugin {
                 name: name.clone(),
                 version: version.clone(),
                 source: url,
+                download_id,
             })?;
             Ok(format!("Installed plugin '{name}' ({version}).\n"))
         }
@@ -222,6 +230,9 @@ fn format_plugin_info(plugin: &Plugin) -> String {
     let mut output = format!("Name: {}\nVersion: {}\n", plugin.name, plugin.version);
     if let Some(source) = &plugin.source {
         output.push_str(&format!("Source: {source}\n"));
+    }
+    if let Some(download_id) = &plugin.download_id {
+        output.push_str(&format!("Download ID: {download_id}\n"));
     }
     output
 }
@@ -327,6 +338,7 @@ mod tests {
             name: "sample".to_owned(),
             version: "1.2.3".to_owned(),
             source: Some("https://example.test/sample".to_owned()),
+            download_id: None,
         };
 
         assert_eq!(

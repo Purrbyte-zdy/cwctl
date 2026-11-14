@@ -13,6 +13,8 @@ pub struct Plugin {
     pub version: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub download_id: Option<String>,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -163,6 +165,7 @@ mod tests {
             name: "sample".to_owned(),
             version: "1.2.3".to_owned(),
             source: Some("https://example.test/sample".to_owned()),
+            download_id: None,
         };
         store
             .write_manifest(&Manifest {
@@ -186,6 +189,7 @@ mod tests {
                 name: "sample".to_owned(),
                 version: "1.0.0".to_owned(),
                 source: None,
+                download_id: None,
             })
             .expect("plugin should be installed");
         store
@@ -193,6 +197,7 @@ mod tests {
                 name: "sample".to_owned(),
                 version: "2.0.0".to_owned(),
                 source: None,
+                download_id: None,
             })
             .expect("plugin should be replaced");
 
@@ -211,6 +216,7 @@ mod tests {
                 name: "sample".to_owned(),
                 version: "1.0.0".to_owned(),
                 source: None,
+                download_id: None,
             })
             .expect("plugin should be installed");
 
@@ -231,6 +237,7 @@ mod tests {
                 name: "sample".to_owned(),
                 version: "1.0.0".to_owned(),
                 source: Some("https://example.test/sample".to_owned()),
+                download_id: None,
             })
             .expect("plugin should be installed");
 
