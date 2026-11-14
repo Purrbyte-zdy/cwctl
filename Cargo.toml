@@ -1,6 +1,6 @@
 [package]
 name = "cwctl"
-version = "0.1.0"
+version = "27.0.0"
 edition = "2021"
 description = "Console management CLI for Class Widgets 2 plugins"
 license = "Apache-2.0"
