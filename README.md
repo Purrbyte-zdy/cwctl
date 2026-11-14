@@ -115,9 +115,10 @@ The local plugin manifest is stored at `~/.local/share/cwctl/plugins.json` by
 default. Set `CWCTL_HOME` to use another data directory during development or
 testing.
 
-`plugin install` currently records validated plugin metadata in this manifest,
-while `plugin update` marks the installed version as `latest`. These commands
-do not download plugin files yet.
+`plugin install` records validated plugin metadata in this manifest, while
+`plugin update` marks the installed version as `latest`. When a URL is
+provided, installation queues the URL in aria2; it does not wait for or verify
+the downloaded plugin file yet.
 
 When `plugin install` receives `--url`, it submits the URL to aria2 through
 JSON-RPC. The endpoint defaults to

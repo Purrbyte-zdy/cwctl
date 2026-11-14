@@ -262,6 +262,7 @@ fn execute(command: Command) -> Result<String, String> {
             let version = version.unwrap_or_else(|| "latest".to_owned());
             validate_plugin_metadata(&name, &version, url.as_deref())?;
             let store = PluginStore::from_environment()?;
+            let queued_download = url.is_some();
             let download_id = if let Some(source) = &url {
                 Some(Aria2Client::from_environment()?.add_uri(source)?)
             } else {
@@ -273,7 +274,13 @@ fn execute(command: Command) -> Result<String, String> {
                 source: url,
                 download_id,
             })?;
-            Ok(format!("Installed plugin '{name}' ({version}).\n"))
+            if queued_download {
+                Ok(format!(
+                    "Queued plugin download for '{name}' ({version}).\n"
+                ))
+            } else {
+                Ok(format!("Recorded plugin '{name}' ({version}).\n"))
+            }
         }
         Command::Plugin(PluginCommand::List) => {
             let store = PluginStore::from_environment()?;
