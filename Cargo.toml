@@ -1,0 +1,9 @@
+[package]
+name = "cwctl"
+version = "0.1.0"
+edition = "2021"
+description = "Console management CLI for Class Widgets 2 plugins"
+license = "Apache-2.0"
+readme = "README.md"
+
+[dependencies]

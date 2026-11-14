@@ -100,7 +100,14 @@ You can also type the manual `cwctl` to use it.
 
 #### Local Build
 
-todo.
+Install the stable Rust toolchain, then run:
+
+```bash
+cargo build --release
+cargo test
+```
+
+The resulting executable is `target/release/cwctl`.
 
 #### GitHub Release Action
 
