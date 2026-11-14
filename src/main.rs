@@ -139,12 +139,14 @@ fn run(args: impl IntoIterator<Item = String>) -> Result<String, String> {
 
     match arguments.as_slice() {
         [] => Ok(usage().to_owned()),
-        [argument] if argument == "-h" || argument == "--help" => Ok(usage().to_owned()),
+        [argument] if matches!(argument.as_str(), "-h" | "--help" | "help" | "?") => {
+            Ok(usage().to_owned())
+        }
         [argument] if argument == "-V" || argument == "--version" => {
             Ok(format!("cwctl {VERSION}\n"))
         }
         [command, argument]
-            if command == "plugin" && (argument == "-h" || argument == "--help") =>
+            if command == "plugin" && matches!(argument.as_str(), "-h" | "--help" | "help") =>
         {
             Ok(usage().to_owned())
         }
@@ -452,6 +454,16 @@ mod tests {
         let output = run(arguments(&["plugin", "--help"])).expect("plugin help should succeed");
 
         assert!(output.contains("plugin install"));
+    }
+
+    #[test]
+    fn supports_short_interactive_help_commands() {
+        assert!(run(arguments(&["help"]))
+            .expect("help command should succeed")
+            .contains("USAGE:"));
+        assert!(run(arguments(&["plugin", "help"]))
+            .expect("plugin help command should succeed")
+            .contains("USAGE:"));
     }
 
     #[test]
