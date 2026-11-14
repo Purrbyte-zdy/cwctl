@@ -1,19 +1,22 @@
 ## cwctl - Console Management Plugin for Class Widgets 2
 
-cwctl is a console management plugin for Class Widgets 2. It provides a command‑line interface to manage the CW2 plugin ecosystem directly from your terminal.
+cwctl is a Rust command-line tool for managing Class Widgets 2 plugins.
 
 > [!CAUTION]
-> The plugin has not developed yet.
+> The project is under active development. Plugin metadata management is
+> available; plugin file installation and `.cwplugin` packaging are not yet
+> complete.
 
-The plugin is written in Rust and uses reedline for a modern CLI experience. It communicates with aria2‑next via JSON‑RPC to enable multi‑threaded concurrent downloads of other plugins. Both cwctl and the bundled aria2‑next are compiled and packaged into a `.cwplugin` file during the GitHub Release action. Class Widgets 2 is responsible for installing and invoking cwctl, while all download heavy lifting is delegated to aria2‑next.
+cwctl stores a local plugin manifest and submits plugin URLs to a bundled
+aria2-next JSON-RPC sidecar. The sidecar is included in release artifacts and
+is started and stopped with the Class Widgets 2 plugin lifecycle.
 
 ### Features
 
-- Full‑featured console with syntax highlighting, auto‑completion, and command history (powered by reedline)
-- Multi‑threaded plugin downloads using aria2‑next
-- Native CW2 plugin format – follows the standard plugin specification
-- Automated packaging via GitHub Actions – produces a ready‑to‑use .cwplugin file
-- High performance and low resource footprint, written in Rust
+- Plugin metadata install, list, info, update, and uninstall commands
+- Atomic JSON manifest writes for local plugin state
+- Optional aria2 JSON-RPC download submission
+- Automated Rust formatting, tests, linting, and release builds in CI
 
 ### Architecture
 
@@ -23,8 +26,8 @@ The plugin is written in Rust and uses reedline for a modern CLI experience. It 
 |  +----------------------------------------------------+   |
 |  |                   cwctl (.cwplugin)                 |   |
 |  |  +-------------+    +----------------------------+  |   |
-|  |  |  reedline   |    |   JSON‑RPC Client          |  |   |
-|  |  | (CLI front) |───▶| (aria2‑next RPC calls)    |  |   |
+|  |  | Rust CLI    |    |   JSON‑RPC Client          |  |   |
+|  |  |             |───▶| (aria2 RPC calls)          |  |   |
 |  |  +-------------+    +------------┬---------------+  |   |
 |  +----------------------------------┼-------------------+   |
 |                                     |                       |
@@ -37,37 +40,44 @@ The plugin is written in Rust and uses reedline for a modern CLI experience. It 
                              +-----------------+
 ```
 
-CW2 loads the plugin and invokes its entry point. cwctl then starts the interactive CLI, and any download command is translated into JSON‑RPC requests sent to the aria2‑next subprocess.
+The current binary runs as a standalone CLI. Commands that include a download
+URL are translated into JSON-RPC requests sent to an externally running aria2
+instance.
 
 ### Technology Stack
 
 | Component       | Technology       | Purpose                         |
 |-----------------|------------------|---------------------------------|
-| CLI framework   | reedline         | Readline‑alike for Rust         |
-| Download core   | aria2‑next       | Multi‑protocol, multi‑thread    |
+| CLI             | Rust standard library | Argument parsing and output |
+| Download core   | aria2-next          | Bundled multi-protocol downloader |
 | RPC protocol    | JSON‑RPC 2.0     | Standard aria2 interface        |
-| CI / CD         | GitHub Actions   | Build and package automation    |
+| CI              | GitHub Actions   | Format, test, lint, build      |
 
 ### Installation
 
-#### Via Class Widgets 2
+#### From source
 
-1. ~~Download the latest .cwplugin file from the Releases page.~~
-2. Install it through the CW2 plugin store or by dragging the file into the application.
-3. CW2 will automatically recognise and load the plugin.
+The project publishes `.cwplugin` and `.zip` packages from version tags.
+Build the Rust binary from source with the commands below.
 
 ### Manual (for development)
 
 ```bash
-git clone https://github.com/your-repo/cwctl
+git clone https://github.com/Purrbyte-zdy/cwctl
 cd cwctl
 cargo build --release
-# Package manually (see Building section)
 ```
 
 ### Usage
 
-After installation, cwctl can be launched from within Class Widgets 2. Once started, you will enter a dedicated console environment.
+Run `cwctl --help` to display the available commands.
+Run `cwctl shell` to open the reedline-powered interactive console. It
+provides completion for the built-in commands and persists history at
+`~/.local/share/cwctl/history`; enter `exit` or `quit` to leave it.
+
+Successful commands return exit code `0`. Invalid arguments, unavailable
+plugins, and failed aria2 requests return exit code `2` and write the error to
+stderr.
 
 ### Core Commands
 
@@ -88,40 +98,55 @@ cwctl plugin uninstall <plugin-name>
 cwctl plugin info <plugin-name>
 ```
 
-You can also type the manual `cwctl` to use it.
-
-### Interactive Features
-
-- Tab completion for commands and plugin names
-- Command history (navigate with arrow keys)
-- Syntax highlighting for better readability
-
 ### Building
 
 #### Local Build
 
-todo.
+Install the stable Rust toolchain, then run:
 
-#### GitHub Release Action
+```bash
+cargo build --release
+cargo test
+```
 
-The repository includes .github/workflows/release.yml. When a tag is pushed, the action will:
+The resulting executable is `target/release/cwctl`.
 
-- Compile the Rust code for multiple platforms
-- Produce the corresponding `.cwplugin` package
-- Attach it to the GitHub Release
+The local plugin manifest is stored at `~/.local/share/cwctl/plugins.json` by
+default. Set `CWCTL_HOME` to use another data directory during development or
+testing.
+
+`plugin install` records validated plugin metadata in this manifest, while
+`plugin update` marks the installed version as `latest`. When a URL is
+provided, installation queues the URL in aria2; it does not wait for or verify
+the downloaded plugin file yet.
+
+When `plugin install` receives `--url`, it submits the URL to the bundled
+aria2-next sidecar through JSON-RPC. Set `CWCTL_ARIA2_RPC` to use an external
+engine instead. Release artifacts are built for Linux x86_64/aarch64, macOS x86_64/arm64,
+and Windows x86_64/arm64. Each platform package contains its matching
+aria2-next 3.1.0 executable.
+
+Every push to `main` and pull request runs `.github/workflows/ci.yml`, which
+checks formatting, tests, Clippy, and the release build. Pushing a `v*.*.*`
+tag runs `.github/workflows/release.yml`; it installs `class-widgets-sdk` with
+uv and creates both `.cwplugin` and `.zip` artifacts with `cw-plugin-pack`.
 
 ### Project Structure
 
 ```
 cwctl/
-├── plugin.json          # Plugin metadata (required by CW2)
-├── __init__.py          # Python loader for CW2 integration
-├── cwctl                # Compiled Rust binary
+├── .github/workflows/ci.yml  # Continuous integration
+├── src/main.rs               # CLI parsing and command execution
+├── src/store.rs              # Local plugin manifest
+├── src/aria2.rs              # aria2 JSON-RPC client
+├── scripts/check_version.py  # Version consistency check
+├── cwplugin.json             # Class Widgets 2 plugin manifest
+├── main.py                   # Class Widgets 2 plugin entry point
+├── aria2-next                # Platform-specific bundled download sidecar
+├── pyproject.toml            # SDK packaging metadata
+├── Cargo.toml                # Rust package manifest
 └── README.md
 ```
-
-> [!Note]
-> The `plugin.json` file must be present for CW2 to recognise the plugin. Its content follows the standard CW2 plugin specification.
 
 ### License
 
@@ -133,8 +158,7 @@ This project is licensed under the Apache License, Version 2.0. See the LICENSE 
 - Class Widgets SDK – Plugin development SDK
 - Plugin Template v2 – Official template
 - Plugin Development Guide – Full documentation
-- reedline – CLI library
-- aria2‑next – Download engine (bundled separately)
+- aria2 – Download engine
 
 ### Contributing
 

@@ -1,0 +1,130 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }} plugin
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            aria_asset: aria2-next-3.1.0-linux-x86_64
+            binary_name: cwctl
+            sidecar_name: aria2-next
+            label: linux-x86_64
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            aria_asset: aria2-next-3.1.0-linux-aarch64
+            binary_name: cwctl
+            sidecar_name: aria2-next
+            label: linux-aarch64
+          - runner: macos-13
+            target: x86_64-apple-darwin
+            aria_asset: aria2-next-3.1.0-macos-x86_64
+            binary_name: cwctl
+            sidecar_name: aria2-next
+            label: macos-x86_64
+          - runner: macos-14
+            target: aarch64-apple-darwin
+            aria_asset: aria2-next-3.1.0-macos-arm64
+            binary_name: cwctl
+            sidecar_name: aria2-next
+            label: macos-arm64
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            aria_asset: aria2-next-3.1.0-windows-x86_64.exe
+            binary_name: cwctl.exe
+            sidecar_name: aria2-next.exe
+            label: windows-x86_64
+          - runner: windows-latest
+            target: aarch64-pc-windows-msvc
+            aria_asset: aria2-next-3.1.0-windows-arm64.exe
+            binary_name: cwctl.exe
+            sidecar_name: aria2-next.exe
+            label: windows-arm64
+
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Build cwctl binary
+        run: |
+          python scripts/check_version.py "${GITHUB_REF#refs/tags/v}"
+          cargo build --release --target "${{ matrix.target }}"
+          cp "target/${{ matrix.target }}/release/${{ matrix.binary_name }}" "${{ matrix.binary_name }}"
+
+      - name: Install Class Widgets SDK with uv
+        run: |
+          uv venv
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            VENV_PYTHON=.venv/Scripts/python.exe
+            PACKAGER=.venv/Scripts/cw-plugin-pack.exe
+          else
+            VENV_PYTHON=.venv/bin/python
+            PACKAGER=.venv/bin/cw-plugin-pack
+          fi
+          echo "VENV_PYTHON=$VENV_PYTHON" >> "$GITHUB_ENV"
+          echo "PACKAGER=$PACKAGER" >> "$GITHUB_ENV"
+          uv pip install --python "$VENV_PYTHON" pip class-widgets-sdk
+
+      - name: Build platform plugin packages
+        run: |
+          mkdir -p dist package-src
+          cp cwplugin.json main.py pyproject.toml README.md LICENSE "${{ matrix.binary_name }}" package-src/
+          ARIA2_VERSION=3.1.0
+          curl -fsSL "https://github.com/AnInsomniacy/aria2-next/releases/download/v${ARIA2_VERSION}/${{ matrix.aria_asset }}" -o "package-src/${{ matrix.sidecar_name }}"
+          curl -fsSL "https://github.com/AnInsomniacy/aria2-next/releases/download/v${ARIA2_VERSION}/aria2-next-${ARIA2_VERSION}-checksums.sha256" -o aria2-checksums.sha256
+          grep " ${{ matrix.aria_asset }}$" aria2-checksums.sha256 | sed "s#${{ matrix.aria_asset }}#package-src/${{ matrix.sidecar_name }}#" | sha256sum -c -
+          if [[ "${{ runner.os }}" != "Windows" ]]; then chmod +x "package-src/${{ matrix.sidecar_name }}"; fi
+          "$PACKAGER" package-src --output "dist/cwctl-${{ matrix.label }}.cwplugin"
+          "$PACKAGER" package-src --format zip --output "dist/cwctl-${{ matrix.label }}.zip"
+
+      - name: Upload platform packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: cwctl-${{ matrix.label }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish multi-platform packages
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download platform packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cwctl-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*

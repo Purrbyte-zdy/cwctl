@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate:
+    name: Validate Rust project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Check project versions
+        run: python scripts/check_version.py
+
+      - name: Validate plugin metadata
+        run: |
+          python -m json.tool cwplugin.json >/dev/null
+          python -m py_compile main.py scripts/check_version.py
+
+      - name: Run tests
+        run: cargo test --all-targets --all-features
+
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Build release binary
+        run: cargo build --release
+
+  package:
+    name: Validate plugin packages
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Build cwctl binary
+        run: cargo build --release
+
+      - name: Install Class Widgets SDK with uv
+        run: |
+          uv venv
+          uv pip install --python .venv/bin/python pip class-widgets-sdk
+
+      - name: Build plugin packages
+        run: |
+          mkdir -p dist package-src
+          cp cwplugin.json main.py pyproject.toml README.md LICENSE target/release/cwctl package-src/
+          ARIA2_VERSION=3.1.0
+          ARIA2_NAME=aria2-next-${ARIA2_VERSION}-linux-x86_64
+          curl -fsSL "https://github.com/AnInsomniacy/aria2-next/releases/download/v${ARIA2_VERSION}/${ARIA2_NAME}" -o package-src/aria2-next
+          curl -fsSL "https://github.com/AnInsomniacy/aria2-next/releases/download/v${ARIA2_VERSION}/aria2-next-${ARIA2_VERSION}-checksums.sha256" -o aria2-checksums.sha256
+          grep " ${ARIA2_NAME}$" aria2-checksums.sha256 | sed "s#${ARIA2_NAME}#package-src/aria2-next#" | sha256sum -c -
+          chmod +x package-src/aria2-next
+          .venv/bin/cw-plugin-pack package-src --output dist/cwctl.cwplugin
+          .venv/bin/cw-plugin-pack package-src --format zip --output dist/cwctl.zip
+
+      - name: Verify package contents
+        run: |
+          python - <<'PY'
+          import json
+          import zipfile
+          from pathlib import Path
+
+          manifest = json.loads(Path("cwplugin.json").read_text())
+          assert manifest["entry"] == "main.py"
+          assert manifest["id"] == "com.purrbyte.cwctl"
+
+          required = {"cwplugin.json", "main.py", "cwctl", "aria2-next"}
+          for archive in (Path("dist/cwctl.cwplugin"), Path("dist/cwctl.zip")):
+              with zipfile.ZipFile(archive) as package:
+                  assert required <= set(package.namelist()), package.namelist()
+          PY
