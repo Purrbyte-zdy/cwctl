@@ -39,3 +39,54 @@ jobs:
 
       - name: Build release binary
         run: cargo build --release
+
+  package:
+    name: Validate plugin packages
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Build cwctl binary
+        run: cargo build --release
+
+      - name: Install Class Widgets SDK with uv
+        run: |
+          uv venv
+          uv pip install --python .venv/bin/python pip class-widgets-sdk
+
+      - name: Build plugin packages
+        run: |
+          mkdir -p dist package-src
+          cp cwplugin.json main.py pyproject.toml README.md LICENSE target/release/cwctl package-src/
+          .venv/bin/cw-plugin-pack package-src --output dist/cwctl.cwplugin
+          .venv/bin/cw-plugin-pack package-src --format zip --output dist/cwctl.zip
+
+      - name: Verify package contents
+        run: |
+          python - <<'PY'
+          import json
+          import zipfile
+          from pathlib import Path
+
+          manifest = json.loads(Path("cwplugin.json").read_text())
+          assert manifest["entry"] == "main.py"
+          assert manifest["id"] == "com.purrbyte.cwctl"
+
+          required = {"cwplugin.json", "main.py", "cwctl"}
+          for archive in (Path("dist/cwctl.cwplugin"), Path("dist/cwctl.zip")):
+              with zipfile.ZipFile(archive) as package:
+                  assert required <= set(package.namelist()), package.namelist()
+          PY
