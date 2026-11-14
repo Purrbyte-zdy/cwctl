@@ -179,7 +179,7 @@ fn run_interactive() -> Result<(), String> {
         .read_line(&prompt)
         .map_err(|error| format!("error: interactive console failed: {error}"))?
     {
-        let arguments: Vec<String> = line.split_whitespace().map(ToOwned::to_owned).collect();
+        let arguments = parse_interactive_line(&line)?;
         if arguments.is_empty() {
             continue;
         }
@@ -193,6 +193,52 @@ fn run_interactive() -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn parse_interactive_line(line: &str) -> Result<Vec<String>, String> {
+    let mut arguments = Vec::new();
+    let mut current = String::new();
+    let mut quote = None;
+    let mut escaped = false;
+    let mut has_content = false;
+
+    for character in line.chars() {
+        if escaped {
+            current.push(character);
+            escaped = false;
+            has_content = true;
+            continue;
+        }
+        match (quote, character) {
+            (_, '\\') => escaped = true,
+            (Some(active_quote), character) if active_quote == character => quote = None,
+            (None, '\'' | '"') => {
+                quote = Some(character);
+                has_content = true;
+            }
+            (None, character) if character.is_whitespace() => {
+                if has_content {
+                    arguments.push(std::mem::take(&mut current));
+                    has_content = false;
+                }
+            }
+            (_, character) => {
+                current.push(character);
+                has_content = true;
+            }
+        }
+    }
+
+    if escaped {
+        return Err("error: interactive command ends with an escape".to_owned());
+    }
+    if quote.is_some() {
+        return Err("error: interactive command has an unmatched quote".to_owned());
+    }
+    if has_content {
+        arguments.push(current);
+    }
+    Ok(arguments)
 }
 
 fn interactive_history_path() -> Result<PathBuf, String> {
@@ -424,5 +470,35 @@ mod tests {
         assert!(
             super::validate_plugin_metadata("sample", "1.2.3", Some("file:///tmp/sample")).is_err()
         );
+    }
+
+    #[test]
+    fn parses_interactive_quotes_and_escapes() {
+        assert_eq!(
+            super::parse_interactive_line(
+                r#"plugin install "sample plugin" --url 'https://example.test/a b'"#
+            )
+            .expect("quoted command should parse"),
+            vec![
+                "plugin",
+                "install",
+                "sample plugin",
+                "--url",
+                "https://example.test/a b"
+            ]
+        );
+        assert_eq!(
+            super::parse_interactive_line(r#"plugin info sample\ plugin"#)
+                .expect("escaped command should parse"),
+            vec!["plugin", "info", "sample plugin"]
+        );
+    }
+
+    #[test]
+    fn rejects_unmatched_interactive_quotes() {
+        let error =
+            super::parse_interactive_line("plugin info 'sample").expect_err("quote should fail");
+
+        assert!(error.contains("unmatched quote"));
     }
 }
