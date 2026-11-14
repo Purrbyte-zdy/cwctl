@@ -71,8 +71,9 @@ cargo build --release
 ### Usage
 
 Run `cwctl --help` to display the available commands.
-Run `cwctl shell` to open the reedline-powered interactive console; enter
-`exit` or `quit` to leave it.
+Run `cwctl shell` to open the reedline-powered interactive console. It
+provides completion for the built-in commands and persists history at
+`~/.local/share/cwctl/history`; enter `exit` or `quit` to leave it.
 
 Successful commands return exit code `0`. Invalid arguments, unavailable
 plugins, and failed aria2 requests return exit code `2` and write the error to

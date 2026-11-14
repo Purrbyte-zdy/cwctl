@@ -1,10 +1,10 @@
-use std::env;
+use std::{env, fs, path::PathBuf};
 
 mod aria2;
 mod store;
 
 use aria2::Aria2Client;
-use reedline::{DefaultPrompt, Reedline, Signal};
+use reedline::{DefaultCompleter, DefaultPrompt, FileBackedHistory, Reedline, Signal};
 use store::{Plugin, PluginStore};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -152,7 +152,27 @@ fn run(args: impl IntoIterator<Item = String>) -> Result<String, String> {
 }
 
 fn run_interactive() -> Result<(), String> {
-    let mut line_editor = Reedline::create();
+    let history_path = interactive_history_path()?;
+    let history = FileBackedHistory::with_file(1_000, history_path)
+        .map_err(|error| format!("error: unable to open interactive history: {error}"))?;
+    let completer = DefaultCompleter::new(
+        [
+            "exit",
+            "quit",
+            "plugin",
+            "plugin install",
+            "plugin list",
+            "plugin update",
+            "plugin uninstall",
+            "plugin info",
+        ]
+        .into_iter()
+        .map(str::to_owned)
+        .collect(),
+    );
+    let mut line_editor = Reedline::create()
+        .with_completer(Box::new(completer))
+        .with_history(Box::new(history));
     let prompt = DefaultPrompt::default();
 
     while let Signal::Success(line) = line_editor
@@ -173,6 +193,21 @@ fn run_interactive() -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn interactive_history_path() -> Result<PathBuf, String> {
+    let data_dir = if let Some(path) = env::var_os("CWCTL_HOME") {
+        PathBuf::from(path)
+    } else if let Some(path) = env::var_os("XDG_DATA_HOME") {
+        PathBuf::from(path).join("cwctl")
+    } else {
+        let home = env::var_os("HOME")
+            .ok_or_else(|| "error: unable to determine the user data directory".to_owned())?;
+        PathBuf::from(home).join(".local/share/cwctl")
+    };
+    fs::create_dir_all(&data_dir)
+        .map_err(|error| format!("error: unable to create history directory: {error}"))?;
+    Ok(data_dir.join("history"))
 }
 
 fn execute(command: Command) -> Result<String, String> {
