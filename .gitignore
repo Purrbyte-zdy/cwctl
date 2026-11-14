@@ -22,6 +22,9 @@ build/
 *.zip
 /.cwctl-binary
 /cwctl
+/aria2-next
+/aria2-next.exe
+/package-src/
 
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

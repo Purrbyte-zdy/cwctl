@@ -43,6 +43,12 @@ jobs:
           rm -rf package-src
           mkdir package-src
           cp cwplugin.json main.py pyproject.toml README.md LICENSE target/release/cwctl package-src/
+          ARIA2_VERSION=3.1.0
+          ARIA2_NAME=aria2-next-${ARIA2_VERSION}-linux-x86_64
+          curl -fsSL "https://github.com/AnInsomniacy/aria2-next/releases/download/v${ARIA2_VERSION}/${ARIA2_NAME}" -o package-src/aria2-next
+          curl -fsSL "https://github.com/AnInsomniacy/aria2-next/releases/download/v${ARIA2_VERSION}/aria2-next-${ARIA2_VERSION}-checksums.sha256" -o aria2-checksums.sha256
+          grep " ${ARIA2_NAME}$" aria2-checksums.sha256 | sed "s#${ARIA2_NAME}#package-src/aria2-next#" | sha256sum -c -
+          chmod +x package-src/aria2-next
           .venv/bin/cw-plugin-pack package-src --output dist/cwctl.cwplugin
           .venv/bin/cw-plugin-pack package-src --format zip --output dist/cwctl.zip
 

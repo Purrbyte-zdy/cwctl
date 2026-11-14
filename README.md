@@ -7,9 +7,9 @@ cwctl is a Rust command-line tool for managing Class Widgets 2 plugins.
 > available; plugin file installation and `.cwplugin` packaging are not yet
 > complete.
 
-cwctl stores a local plugin manifest and can submit plugin URLs to an aria2
-JSON-RPC endpoint. Class Widgets 2 integration and bundled aria2 packaging are
-planned, but are not part of the current repository.
+cwctl stores a local plugin manifest and submits plugin URLs to a bundled
+aria2-next JSON-RPC sidecar. The sidecar is included in release artifacts and
+is started and stopped with the Class Widgets 2 plugin lifecycle.
 
 ### Features
 
@@ -49,7 +49,7 @@ instance.
 | Component       | Technology       | Purpose                         |
 |-----------------|------------------|---------------------------------|
 | CLI             | Rust standard library | Argument parsing and output |
-| Download core   | aria2               | Multi-protocol downloader      |
+| Download core   | aria2-next          | Bundled multi-protocol downloader |
 | RPC protocol    | JSON‑RPC 2.0     | Standard aria2 interface        |
 | CI              | GitHub Actions   | Format, test, lint, build      |
 
@@ -120,10 +120,9 @@ testing.
 provided, installation queues the URL in aria2; it does not wait for or verify
 the downloaded plugin file yet.
 
-When `plugin install` receives `--url`, it submits the URL to aria2 through
-JSON-RPC. The endpoint defaults to
-`http://127.0.0.1:6800/jsonrpc`; override it with `CWCTL_ARIA2_RPC` and set
-`CWCTL_ARIA2_SECRET` when aria2 requires a secret token.
+When `plugin install` receives `--url`, it submits the URL to the bundled
+aria2-next sidecar through JSON-RPC. Set `CWCTL_ARIA2_RPC` to use an external
+engine instead. The current Linux release artifact bundles aria2-next 3.1.0.
 
 Every push to `main` and pull request runs `.github/workflows/ci.yml`, which
 checks formatting, tests, Clippy, and the release build. Pushing a `v*.*.*`
@@ -141,6 +140,7 @@ cwctl/
 ├── scripts/check_version.py  # Version consistency check
 ├── cwplugin.json             # Class Widgets 2 plugin manifest
 ├── main.py                   # Class Widgets 2 plugin entry point
+├── aria2-next                # Platform-specific bundled download sidecar
 ├── pyproject.toml            # SDK packaging metadata
 ├── Cargo.toml                # Rust package manifest
 └── README.md
