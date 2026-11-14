@@ -1,6 +1,7 @@
 use std::{env, fs, path::PathBuf};
 
 mod aria2;
+mod paths;
 mod store;
 
 use aria2::Aria2Client;
@@ -252,15 +253,7 @@ fn parse_interactive_line(line: &str) -> Result<Vec<String>, String> {
 }
 
 fn interactive_history_path() -> Result<PathBuf, String> {
-    let data_dir = if let Some(path) = env::var_os("CWCTL_HOME") {
-        PathBuf::from(path)
-    } else if let Some(path) = env::var_os("XDG_DATA_HOME") {
-        PathBuf::from(path).join("cwctl")
-    } else {
-        let home = env::var_os("HOME")
-            .ok_or_else(|| "error: unable to determine the user data directory".to_owned())?;
-        PathBuf::from(home).join(".local/share/cwctl")
-    };
+    let data_dir = paths::data_dir()?;
     fs::create_dir_all(&data_dir)
         .map_err(|error| format!("error: unable to create history directory: {error}"))?;
     Ok(data_dir.join("history"))
