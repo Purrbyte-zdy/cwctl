@@ -109,6 +109,10 @@ cargo test
 
 The resulting executable is `target/release/cwctl`.
 
+The local plugin manifest is stored at `~/.local/share/cwctl/plugins.json` by
+default. Set `CWCTL_HOME` to use another data directory during development or
+testing.
+
 #### GitHub Release Action
 
 The repository includes .github/workflows/release.yml. When a tag is pushed, the action will:

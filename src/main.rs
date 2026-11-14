@@ -1,5 +1,9 @@
 use std::env;
 
+mod store;
+
+use store::{Plugin, PluginStore};
+
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, PartialEq, Eq)]
@@ -136,11 +140,49 @@ fn run(args: impl IntoIterator<Item = String>) -> Result<String, String> {
         [argument] if argument == "-V" || argument == "--version" => {
             Ok(format!("cwctl {VERSION}\n"))
         }
-        _ => {
-            parse_command(&arguments)?;
-            Err("error: plugin management is not implemented yet".to_owned())
+        _ => execute(parse_command(&arguments)?),
+    }
+}
+
+fn execute(command: Command) -> Result<String, String> {
+    match command {
+        Command::Plugin(PluginCommand::List) => {
+            let store = PluginStore::from_environment()?;
+            format_plugin_list(&store.list()?)
+        }
+        Command::Plugin(PluginCommand::Info { name }) => {
+            let store = PluginStore::from_environment()?;
+            let plugin = store
+                .find(&name)?
+                .ok_or_else(|| format!("error: plugin '{name}' is not installed"))?;
+            Ok(format_plugin_info(&plugin))
+        }
+        Command::Plugin(PluginCommand::Install { .. })
+        | Command::Plugin(PluginCommand::Update { .. })
+        | Command::Plugin(PluginCommand::Uninstall { .. }) => {
+            Err("error: this plugin operation is not implemented yet".to_owned())
         }
     }
+}
+
+fn format_plugin_list(plugins: &[Plugin]) -> Result<String, String> {
+    if plugins.is_empty() {
+        return Ok("No plugins installed.\n".to_owned());
+    }
+
+    let mut output = String::new();
+    for plugin in plugins {
+        output.push_str(&format!("{} {}\n", plugin.name, plugin.version));
+    }
+    Ok(output)
+}
+
+fn format_plugin_info(plugin: &Plugin) -> String {
+    let mut output = format!("Name: {}\nVersion: {}\n", plugin.name, plugin.version);
+    if let Some(source) = &plugin.source {
+        output.push_str(&format!("Source: {source}\n"));
+    }
+    output
 }
 
 fn main() {
@@ -155,7 +197,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_command, run, Command, PluginCommand};
+    use super::{parse_command, run, Command, Plugin, PluginCommand};
 
     fn arguments(arguments: &[&str]) -> Vec<String> {
         arguments
@@ -229,5 +271,26 @@ mod tests {
             run(arguments(&["plugin", "publish"])).expect_err("unknown commands should fail");
 
         assert!(error.contains("unknown plugin command"));
+    }
+
+    #[test]
+    fn lists_no_plugins_when_manifest_is_missing() {
+        let output = super::format_plugin_list(&[]).expect("empty plugin list should succeed");
+
+        assert_eq!(output, "No plugins installed.\n");
+    }
+
+    #[test]
+    fn formats_plugin_info() {
+        let plugin = Plugin {
+            name: "sample".to_owned(),
+            version: "1.2.3".to_owned(),
+            source: Some("https://example.test/sample".to_owned()),
+        };
+
+        assert_eq!(
+            super::format_plugin_info(&plugin),
+            "Name: sample\nVersion: 1.2.3\nSource: https://example.test/sample\n"
+        );
     }
 }
