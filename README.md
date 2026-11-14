@@ -130,6 +130,9 @@ The repository includes .github/workflows/release.yml. When a tag is pushed, the
 - Produce the corresponding `.cwplugin` package
 - Attach it to the GitHub Release
 
+Every push to `main` and pull request also runs `.github/workflows/ci.yml`,
+which checks formatting, tests, Clippy, and the release build.
+
 ### Project Structure
 
 ```
