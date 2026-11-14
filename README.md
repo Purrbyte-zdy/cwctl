@@ -63,10 +63,9 @@ Build the Rust binary from source with the commands below.
 ### Manual (for development)
 
 ```bash
-git clone https://github.com/your-repo/cwctl
+git clone https://github.com/Purrbyte-zdy/cwctl
 cd cwctl
 cargo build --release
-# Package manually (see Building section)
 ```
 
 ### Usage
