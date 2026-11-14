@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{
-    env, fs,
+    fs,
     io::ErrorKind,
     path::{Path, PathBuf},
 };
@@ -29,17 +29,7 @@ pub struct PluginStore {
 
 impl PluginStore {
     pub fn from_environment() -> Result<Self, String> {
-        let data_dir = if let Some(path) = env::var_os("CWCTL_HOME") {
-            PathBuf::from(path)
-        } else if let Some(path) = env::var_os("XDG_DATA_HOME") {
-            PathBuf::from(path).join("cwctl")
-        } else {
-            let home = env::var_os("HOME")
-                .ok_or_else(|| "error: unable to determine the user data directory".to_owned())?;
-            PathBuf::from(home).join(".local/share/cwctl")
-        };
-
-        Ok(Self::new(data_dir))
+        Ok(Self::new(crate::paths::data_dir()?))
     }
 
     pub fn new(data_dir: impl AsRef<Path>) -> Self {
@@ -116,8 +106,17 @@ impl PluginStore {
             .map_err(|error| format!("error: unable to serialize plugin manifest: {error}"))?;
         fs::write(&temporary_path, content)
             .map_err(|error| format!("error: unable to write plugin manifest: {error}"))?;
-        fs::rename(&temporary_path, &self.manifest_path)
-            .map_err(|error| format!("error: unable to replace plugin manifest: {error}"))
+        match fs::rename(&temporary_path, &self.manifest_path) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == ErrorKind::AlreadyExists => {
+                fs::remove_file(&self.manifest_path).map_err(|error| {
+                    format!("error: unable to replace plugin manifest: {error}")
+                })?;
+                fs::rename(&temporary_path, &self.manifest_path)
+                    .map_err(|error| format!("error: unable to replace plugin manifest: {error}"))
+            }
+            Err(error) => Err(format!("error: unable to replace plugin manifest: {error}")),
+        }
     }
 
     #[cfg(test)]
