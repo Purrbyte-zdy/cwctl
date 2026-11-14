@@ -39,6 +39,7 @@ fn usage() -> &'static str {
 USAGE:
     cwctl [OPTIONS]
     cwctl plugin <COMMAND>
+    cwctl shell
 
 COMMANDS:
     plugin install <name> [--version <version>] [--url <source>]
@@ -46,6 +47,7 @@ COMMANDS:
     plugin update <name>
     plugin uninstall <name>
     plugin info <name>
+    shell            Start the interactive console
 
 OPTIONS:
     -h, --help       Print help information
@@ -166,6 +168,7 @@ fn run_interactive() -> Result<(), String> {
         [
             "exit",
             "quit",
+            "shell",
             "plugin",
             "plugin install",
             "plugin list",
