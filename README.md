@@ -57,8 +57,8 @@ instance.
 
 #### From source
 
-The project does not publish a `.cwplugin` package yet. Build it from source
-with the commands below.
+The project publishes `.cwplugin` and `.zip` packages from version tags.
+Build the Rust binary from source with the commands below.
 
 ### Manual (for development)
 
@@ -118,8 +118,10 @@ JSON-RPC. The endpoint defaults to
 `http://127.0.0.1:6800/jsonrpc`; override it with `CWCTL_ARIA2_RPC` and set
 `CWCTL_ARIA2_SECRET` when aria2 requires a secret token.
 
-Every push to `main` and pull request also runs `.github/workflows/ci.yml`,
-which checks formatting, tests, Clippy, and the release build.
+Every push to `main` and pull request runs `.github/workflows/ci.yml`, which
+checks formatting, tests, Clippy, and the release build. Pushing a `v*.*.*`
+tag runs `.github/workflows/release.yml`; it installs `class-widgets-sdk` with
+uv and creates both `.cwplugin` and `.zip` artifacts with `cw-plugin-pack`.
 
 ### Project Structure
 
@@ -129,6 +131,9 @@ cwctl/
 ├── src/main.rs               # CLI parsing and command execution
 ├── src/store.rs              # Local plugin manifest
 ├── src/aria2.rs              # aria2 JSON-RPC client
+├── cwplugin.json             # Class Widgets 2 plugin manifest
+├── main.py                   # Class Widgets 2 plugin entry point
+├── pyproject.toml            # SDK packaging metadata
 ├── Cargo.toml                # Rust package manifest
 └── README.md
 ```

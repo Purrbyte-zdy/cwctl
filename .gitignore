@@ -13,6 +13,16 @@ target
 # Contains mutation testing data
 **/mutants.out*/
 
+# Python plugin packaging
+.venv/
+dist/
+build/
+*.egg-info/
+*.cwplugin
+*.zip
+/.cwctl-binary
+/cwctl
+
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore

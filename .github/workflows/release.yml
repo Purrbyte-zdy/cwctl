@@ -1,0 +1,55 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Build cwctl binary
+        run: |
+          cargo build --release
+          cp target/release/cwctl ./cwctl
+
+      - name: Install Class Widgets SDK with uv
+        run: |
+          uv venv
+          uv pip install --python .venv/bin/python pip class-widgets-sdk
+
+      - name: Build plugin packages
+        run: |
+          mkdir -p dist
+          rm -rf package-src
+          mkdir package-src
+          cp cwplugin.json main.py pyproject.toml README.md LICENSE target/release/cwctl package-src/
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          sed -i "s/27\.0\.0/${VERSION}/g" package-src/cwplugin.json package-src/pyproject.toml
+          .venv/bin/cw-plugin-pack package-src --output dist/cwctl.cwplugin
+          .venv/bin/cw-plugin-pack package-src --format zip --output dist/cwctl.zip
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/cwctl.cwplugin
+            dist/cwctl.zip
