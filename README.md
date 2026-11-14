@@ -73,6 +73,10 @@ cargo build --release
 
 Run `cwctl --help` to display the available commands.
 
+Successful commands return exit code `0`. Invalid arguments, unavailable
+plugins, and failed aria2 requests return exit code `2` and write the error to
+stderr.
+
 ### Core Commands
 
 ```bash
