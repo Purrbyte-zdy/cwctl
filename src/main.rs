@@ -146,6 +146,17 @@ fn run(args: impl IntoIterator<Item = String>) -> Result<String, String> {
 
 fn execute(command: Command) -> Result<String, String> {
     match command {
+        Command::Plugin(PluginCommand::Install { name, version, url }) => {
+            let version = version.unwrap_or_else(|| "latest".to_owned());
+            validate_plugin_metadata(&name, &version, url.as_deref())?;
+            let store = PluginStore::from_environment()?;
+            store.install(Plugin {
+                name: name.clone(),
+                version: version.clone(),
+                source: url,
+            })?;
+            Ok(format!("Installed plugin '{name}' ({version}).\n"))
+        }
         Command::Plugin(PluginCommand::List) => {
             let store = PluginStore::from_environment()?;
             format_plugin_list(&store.list()?)
@@ -157,12 +168,29 @@ fn execute(command: Command) -> Result<String, String> {
                 .ok_or_else(|| format!("error: plugin '{name}' is not installed"))?;
             Ok(format_plugin_info(&plugin))
         }
-        Command::Plugin(PluginCommand::Install { .. })
-        | Command::Plugin(PluginCommand::Update { .. })
+        Command::Plugin(PluginCommand::Update { .. })
         | Command::Plugin(PluginCommand::Uninstall { .. }) => {
             Err("error: this plugin operation is not implemented yet".to_owned())
         }
     }
+}
+
+fn validate_plugin_metadata(name: &str, version: &str, source: Option<&str>) -> Result<(), String> {
+    if name.trim().is_empty() {
+        return Err("error: plugin name cannot be empty".to_owned());
+    }
+    if name.contains('/') || name.contains('\\') {
+        return Err("error: plugin name cannot contain path separators".to_owned());
+    }
+    if version.trim().is_empty() {
+        return Err("error: plugin version cannot be empty".to_owned());
+    }
+    if let Some(source) = source {
+        if !(source.starts_with("http://") || source.starts_with("https://")) {
+            return Err("error: plugin source must be an HTTP(S) URL".to_owned());
+        }
+    }
+    Ok(())
 }
 
 fn format_plugin_list(plugins: &[Plugin]) -> Result<String, String> {
@@ -291,6 +319,21 @@ mod tests {
         assert_eq!(
             super::format_plugin_info(&plugin),
             "Name: sample\nVersion: 1.2.3\nSource: https://example.test/sample\n"
+        );
+    }
+
+    #[test]
+    fn validates_plugin_metadata() {
+        assert!(super::validate_plugin_metadata(
+            "sample",
+            "1.2.3",
+            Some("https://example.test/sample")
+        )
+        .is_ok());
+        assert!(super::validate_plugin_metadata("sample/name", "1.2.3", None).is_err());
+        assert!(super::validate_plugin_metadata("sample", "", None).is_err());
+        assert!(
+            super::validate_plugin_metadata("sample", "1.2.3", Some("file:///tmp/sample")).is_err()
         );
     }
 }

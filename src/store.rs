@@ -54,6 +54,16 @@ impl PluginStore {
         Ok(self.list()?.into_iter().find(|plugin| plugin.name == name))
     }
 
+    pub fn install(&self, plugin: Plugin) -> Result<(), String> {
+        let mut manifest = self.load()?;
+        manifest.plugins.retain(|item| item.name != plugin.name);
+        manifest.plugins.push(plugin);
+        manifest
+            .plugins
+            .sort_by(|left, right| left.name.cmp(&right.name));
+        self.save(&manifest)
+    }
+
     fn load(&self) -> Result<Manifest, String> {
         let content = match fs::read_to_string(&self.manifest_path) {
             Ok(content) => content,
@@ -63,6 +73,23 @@ impl PluginStore {
 
         serde_json::from_str(&content)
             .map_err(|error| format!("error: invalid plugin manifest: {error}"))
+    }
+
+    fn save(&self, manifest: &Manifest) -> Result<(), String> {
+        let parent = self
+            .manifest_path
+            .parent()
+            .ok_or_else(|| "error: plugin manifest has no parent directory".to_owned())?;
+        fs::create_dir_all(parent)
+            .map_err(|error| format!("error: unable to create plugin data directory: {error}"))?;
+
+        let temporary_path = self.manifest_path.with_extension("json.tmp");
+        let content = serde_json::to_string_pretty(manifest)
+            .map_err(|error| format!("error: unable to serialize plugin manifest: {error}"))?;
+        fs::write(&temporary_path, content)
+            .map_err(|error| format!("error: unable to write plugin manifest: {error}"))?;
+        fs::rename(&temporary_path, &self.manifest_path)
+            .map_err(|error| format!("error: unable to replace plugin manifest: {error}"))
     }
 
     #[cfg(test)]
@@ -121,6 +148,31 @@ mod tests {
             store.find("sample").expect("manifest should load"),
             Some(plugin)
         );
+        fs::remove_dir_all(directory).expect("temporary directory should be removed");
+    }
+
+    #[test]
+    fn installs_and_replaces_plugins() {
+        let directory = temporary_directory();
+        let store = PluginStore::new(&directory);
+        store
+            .install(Plugin {
+                name: "sample".to_owned(),
+                version: "1.0.0".to_owned(),
+                source: None,
+            })
+            .expect("plugin should be installed");
+        store
+            .install(Plugin {
+                name: "sample".to_owned(),
+                version: "2.0.0".to_owned(),
+                source: None,
+            })
+            .expect("plugin should be replaced");
+
+        let plugins = store.list().expect("manifest should load");
+        assert_eq!(plugins.len(), 1);
+        assert_eq!(plugins[0].version, "2.0.0");
         fs::remove_dir_all(directory).expect("temporary directory should be removed");
     }
 
