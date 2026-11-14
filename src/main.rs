@@ -4,6 +4,7 @@ mod aria2;
 mod store;
 
 use aria2::Aria2Client;
+use reedline::{DefaultPrompt, Reedline, Signal};
 use store::{Plugin, PluginStore};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -142,8 +143,36 @@ fn run(args: impl IntoIterator<Item = String>) -> Result<String, String> {
         [argument] if argument == "-V" || argument == "--version" => {
             Ok(format!("cwctl {VERSION}\n"))
         }
+        [argument] if argument == "shell" => {
+            run_interactive()?;
+            Ok(String::new())
+        }
         _ => execute(parse_command(&arguments)?),
     }
+}
+
+fn run_interactive() -> Result<(), String> {
+    let mut line_editor = Reedline::create();
+    let prompt = DefaultPrompt::default();
+
+    while let Signal::Success(line) = line_editor
+        .read_line(&prompt)
+        .map_err(|error| format!("error: interactive console failed: {error}"))?
+    {
+        let arguments: Vec<String> = line.split_whitespace().map(ToOwned::to_owned).collect();
+        if arguments.is_empty() {
+            continue;
+        }
+        if matches!(arguments[0].as_str(), "exit" | "quit") {
+            break;
+        }
+        match run(arguments) {
+            Ok(output) => print!("{output}"),
+            Err(error) => eprintln!("{error}"),
+        }
+    }
+
+    Ok(())
 }
 
 fn execute(command: Command) -> Result<String, String> {
