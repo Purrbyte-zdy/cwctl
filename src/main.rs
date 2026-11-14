@@ -143,6 +143,11 @@ fn run(args: impl IntoIterator<Item = String>) -> Result<String, String> {
         [argument] if argument == "-V" || argument == "--version" => {
             Ok(format!("cwctl {VERSION}\n"))
         }
+        [command, argument]
+            if command == "plugin" && (argument == "-h" || argument == "--help") =>
+        {
+            Ok(usage().to_owned())
+        }
         [argument] if argument == "shell" => {
             run_interactive()?;
             Ok(String::new())
@@ -440,6 +445,13 @@ mod tests {
             run(arguments(&["plugin", "publish"])).expect_err("unknown commands should fail");
 
         assert!(error.contains("unknown plugin command"));
+    }
+
+    #[test]
+    fn prints_help_for_plugin_command() {
+        let output = run(arguments(&["plugin", "--help"])).expect("plugin help should succeed");
+
+        assert!(output.contains("plugin install"));
     }
 
     #[test]
