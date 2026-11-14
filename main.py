@@ -95,7 +95,14 @@ class CwctlPlugin(CW2Plugin):
     def __init__(self, api: PluginAPI):
         super().__init__(api)
         plugin_dir = Path(__file__).parent
-        self.binary = plugin_dir / "cwctl"
+        self.binary = next(
+            (
+                plugin_dir / name
+                for name in ("cwctl", "cwctl.exe")
+                if (plugin_dir / name).is_file()
+            ),
+            plugin_dir / "cwctl",
+        )
         self.aria2 = Aria2Runtime(plugin_dir)
 
     def on_load(self):

@@ -122,7 +122,9 @@ the downloaded plugin file yet.
 
 When `plugin install` receives `--url`, it submits the URL to the bundled
 aria2-next sidecar through JSON-RPC. Set `CWCTL_ARIA2_RPC` to use an external
-engine instead. The current Linux release artifact bundles aria2-next 3.1.0.
+engine instead. Release artifacts are built for Linux x86_64/aarch64, macOS x86_64/arm64,
+and Windows x86_64/arm64. Each platform package contains its matching
+aria2-next 3.1.0 executable.
 
 Every push to `main` and pull request runs `.github/workflows/ci.yml`, which
 checks formatting, tests, Clippy, and the release build. Pushing a `v*.*.*`
