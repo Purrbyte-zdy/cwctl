@@ -113,8 +113,9 @@ The local plugin manifest is stored at `~/.local/share/cwctl/plugins.json` by
 default. Set `CWCTL_HOME` to use another data directory during development or
 testing.
 
-`plugin install` currently records validated plugin metadata in this manifest;
-it does not download plugin files yet.
+`plugin install` currently records validated plugin metadata in this manifest,
+while `plugin update` marks the installed version as `latest`. These commands
+do not download plugin files yet.
 
 #### GitHub Release Action
 

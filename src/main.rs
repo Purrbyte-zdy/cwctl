@@ -168,9 +168,22 @@ fn execute(command: Command) -> Result<String, String> {
                 .ok_or_else(|| format!("error: plugin '{name}' is not installed"))?;
             Ok(format_plugin_info(&plugin))
         }
-        Command::Plugin(PluginCommand::Update { .. })
-        | Command::Plugin(PluginCommand::Uninstall { .. }) => {
-            Err("error: this plugin operation is not implemented yet".to_owned())
+        Command::Plugin(PluginCommand::Update { name }) => {
+            let store = PluginStore::from_environment()?;
+            let plugin = store
+                .update(&name, "latest".to_owned())?
+                .ok_or_else(|| format!("error: plugin '{name}' is not installed"))?;
+            Ok(format!(
+                "Updated plugin '{}' to {}.\n",
+                plugin.name, plugin.version
+            ))
+        }
+        Command::Plugin(PluginCommand::Uninstall { name }) => {
+            let store = PluginStore::from_environment()?;
+            if !store.uninstall(&name)? {
+                return Err(format!("error: plugin '{name}' is not installed"));
+            }
+            Ok(format!("Uninstalled plugin '{name}'.\n"))
         }
     }
 }

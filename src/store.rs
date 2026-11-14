@@ -64,6 +64,32 @@ impl PluginStore {
         self.save(&manifest)
     }
 
+    pub fn uninstall(&self, name: &str) -> Result<bool, String> {
+        let mut manifest = self.load()?;
+        let original_len = manifest.plugins.len();
+        manifest.plugins.retain(|plugin| plugin.name != name);
+        if manifest.plugins.len() == original_len {
+            return Ok(false);
+        }
+        self.save(&manifest)?;
+        Ok(true)
+    }
+
+    pub fn update(&self, name: &str, version: String) -> Result<Option<Plugin>, String> {
+        let mut manifest = self.load()?;
+        let Some(plugin) = manifest
+            .plugins
+            .iter_mut()
+            .find(|plugin| plugin.name == name)
+        else {
+            return Ok(None);
+        };
+        plugin.version = version;
+        let updated = plugin.clone();
+        self.save(&manifest)?;
+        Ok(Some(updated))
+    }
+
     fn load(&self) -> Result<Manifest, String> {
         let content = match fs::read_to_string(&self.manifest_path) {
             Ok(content) => content,
@@ -173,6 +199,51 @@ mod tests {
         let plugins = store.list().expect("manifest should load");
         assert_eq!(plugins.len(), 1);
         assert_eq!(plugins[0].version, "2.0.0");
+        fs::remove_dir_all(directory).expect("temporary directory should be removed");
+    }
+
+    #[test]
+    fn uninstalls_plugins() {
+        let directory = temporary_directory();
+        let store = PluginStore::new(&directory);
+        store
+            .install(Plugin {
+                name: "sample".to_owned(),
+                version: "1.0.0".to_owned(),
+                source: None,
+            })
+            .expect("plugin should be installed");
+
+        assert!(store.uninstall("sample").expect("plugin should uninstall"));
+        assert!(!store
+            .uninstall("sample")
+            .expect("missing plugin is not removed"));
+        assert!(store.list().expect("manifest should load").is_empty());
+        fs::remove_dir_all(directory).expect("temporary directory should be removed");
+    }
+
+    #[test]
+    fn updates_plugin_version() {
+        let directory = temporary_directory();
+        let store = PluginStore::new(&directory);
+        store
+            .install(Plugin {
+                name: "sample".to_owned(),
+                version: "1.0.0".to_owned(),
+                source: Some("https://example.test/sample".to_owned()),
+            })
+            .expect("plugin should be installed");
+
+        let updated = store
+            .update("sample", "latest".to_owned())
+            .expect("plugin should update")
+            .expect("plugin should exist");
+
+        assert_eq!(updated.version, "latest");
+        assert_eq!(
+            updated.source,
+            Some("https://example.test/sample".to_owned())
+        );
         fs::remove_dir_all(directory).expect("temporary directory should be removed");
     }
 
