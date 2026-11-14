@@ -131,6 +131,7 @@ cwctl/
 ├── src/main.rs               # CLI parsing and command execution
 ├── src/store.rs              # Local plugin manifest
 ├── src/aria2.rs              # aria2 JSON-RPC client
+├── scripts/check_version.py  # Version consistency check
 ├── cwplugin.json             # Class Widgets 2 plugin manifest
 ├── main.py                   # Class Widgets 2 plugin entry point
 ├── pyproject.toml            # SDK packaging metadata

@@ -31,6 +31,9 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
+      - name: Check project versions
+        run: python scripts/check_version.py
+
       - name: Run tests
         run: cargo test --all-targets --all-features
 

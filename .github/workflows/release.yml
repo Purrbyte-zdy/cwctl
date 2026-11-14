@@ -28,6 +28,7 @@ jobs:
 
       - name: Build cwctl binary
         run: |
+          python scripts/check_version.py "${GITHUB_REF#refs/tags/v}"
           cargo build --release
           cp target/release/cwctl ./cwctl
 
@@ -42,8 +43,6 @@ jobs:
           rm -rf package-src
           mkdir package-src
           cp cwplugin.json main.py pyproject.toml README.md LICENSE target/release/cwctl package-src/
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          sed -i "s/27\.0\.0/${VERSION}/g" package-src/cwplugin.json package-src/pyproject.toml
           .venv/bin/cw-plugin-pack package-src --output dist/cwctl.cwplugin
           .venv/bin/cw-plugin-pack package-src --format zip --output dist/cwctl.zip
 
