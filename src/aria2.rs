@@ -70,10 +70,93 @@ impl Aria2Client {
 #[cfg(test)]
 mod tests {
     use super::Aria2Client;
+    use std::{
+        io::{ErrorKind, Read, Write},
+        net::TcpListener,
+        thread,
+    };
+
+    fn start_server(body: &'static str) -> (String, thread::JoinHandle<String>) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("test server should bind");
+        let endpoint = format!(
+            "http://{}/jsonrpc",
+            listener
+                .local_addr()
+                .expect("test server should have an address")
+        );
+        let handle = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("test server should accept");
+            stream
+                .set_read_timeout(Some(std::time::Duration::from_millis(100)))
+                .expect("test server should set timeout");
+            let mut request = Vec::new();
+            let mut buffer = [0; 1024];
+            loop {
+                let size = match stream.read(&mut buffer) {
+                    Ok(size) => size,
+                    Err(error)
+                        if error.kind() == ErrorKind::WouldBlock
+                            || error.kind() == ErrorKind::TimedOut =>
+                    {
+                        break
+                    }
+                    Err(error) => panic!("test server should read request: {error}"),
+                };
+                if size == 0 {
+                    break;
+                }
+                request.extend_from_slice(&buffer[..size]);
+            }
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            stream
+                .write_all(response.as_bytes())
+                .expect("test server should write response");
+            String::from_utf8(request).expect("request should be UTF-8")
+        });
+        (endpoint, handle)
+    }
 
     #[test]
     fn validates_endpoint() {
         assert!(Aria2Client::new("http://127.0.0.1:6800/jsonrpc", None).is_ok());
         assert!(Aria2Client::new("file:///tmp/aria2", None).is_err());
+    }
+
+    #[test]
+    fn submits_add_uri_request_and_returns_gid() {
+        let (endpoint, server) =
+            start_server("{\"jsonrpc\":\"2.0\",\"id\":\"cwctl\",\"result\":\"gid\"}");
+        let client = Aria2Client::new(endpoint, Some("secret".to_owned()))
+            .expect("client should accept test endpoint");
+
+        assert_eq!(
+            client
+                .add_uri("https://example.test/plugin.cwplugin")
+                .expect("RPC request should succeed"),
+            "gid"
+        );
+        let request = server.join().expect("test server should finish");
+        assert!(request.contains("aria2.addUri"));
+        assert!(request.contains("token:secret"));
+        assert!(request.contains("https://example.test/plugin.cwplugin"));
+    }
+
+    #[test]
+    fn returns_rpc_errors() {
+        let (endpoint, server) = start_server(
+            "{\"jsonrpc\":\"2.0\",\"id\":\"cwctl\",\"error\":{\"code\":1,\"message\":\"bad URI\"}}",
+        );
+        let client = Aria2Client::new(endpoint, None).expect("client should accept test endpoint");
+
+        let error = client
+            .add_uri("not-a-url")
+            .expect_err("RPC error should be returned");
+
+        assert!(error.contains("aria2 RPC error 1: bad URI"));
+        server.join().expect("test server should finish");
     }
 }
