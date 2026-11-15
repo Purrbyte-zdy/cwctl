@@ -1,11 +1,13 @@
 {
-  "id": "com.purrbyte.cwctl",
+  "id": "top.purrbyte.cwctl",
   "name": "cwctl",
-  "version": "27.0.0",
-  "api_version": "~=0.4.2",
+  "version": "27.0.0-alpha1",
+  "api_version": ">=0.4.2",
   "entry": "main.py",
   "author": "Purrbyte",
   "description": "Console management tool for Class Widgets 2 plugins.",
   "url": "https://github.com/Purrbyte-zdy/cwctl",
-  "readme": "README.md"
+  "readme": "README.md",
+  "icon": "icon.png",
+  "tag_ids": []
 }
