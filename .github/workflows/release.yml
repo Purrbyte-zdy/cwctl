@@ -43,7 +43,7 @@ jobs:
             binary_name: cwctl
             sidecar_name: aria2-next
             label: macos-x64
-          - runner: macos-14
+          - runner: macos-15
             target: aarch64-apple-darwin
             aria_asset: aria2-next-3.1.0-macos-arm64
             binary_name: cwctl
