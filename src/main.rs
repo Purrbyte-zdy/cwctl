@@ -390,7 +390,7 @@ mod tests {
     fn prints_version() {
         let output = run(arguments(&["--version"])).expect("version should be returned");
 
-        assert_eq!(output, "cwctl 27.0.0\n");
+        assert_eq!(output, "cwctl 27.0.0-alpha1\n");
     }
 
     #[test]

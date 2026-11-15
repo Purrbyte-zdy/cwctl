@@ -97,7 +97,7 @@ jobs:
 
           manifest = json.loads(Path("cwplugin.json").read_text())
           assert manifest["entry"] == "main.py"
-          assert manifest["id"] == "com.purrbyte.cwctl"
+          assert manifest["id"] == "top.purrbyte.cwctl"
 
           required = {"cwplugin.json", "main.py", "cwctl", "aria2-next"}
           for archive in (Path("dist/cwctl.cwplugin"), Path("dist/cwctl.zip")):

@@ -30,7 +30,10 @@ fn help_and_version_succeed() {
     assert!(help.status.success());
     assert!(String::from_utf8_lossy(&help.stdout).contains("plugin install"));
     assert!(version.status.success());
-    assert_eq!(String::from_utf8_lossy(&version.stdout), "cwctl 27.0.0\n");
+    assert_eq!(
+        String::from_utf8_lossy(&version.stdout),
+        "cwctl 27.0.0-alpha1\n"
+    );
 }
 
 #[test]
