@@ -37,7 +37,7 @@ jobs:
             binary_name: cwctl
             sidecar_name: aria2-next
             label: linux-aarch64
-          - runner: macos-13
+          - runner: macos-15-intel
             target: x86_64-apple-darwin
             aria_asset: aria2-next-3.1.0-macos-x86_64
             binary_name: cwctl
